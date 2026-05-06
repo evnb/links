@@ -1,0 +1,77 @@
+name: Build & Deploy Shortlinks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - links.yaml
+      - .github/workflows/build.yml
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Generate redirect pages
+        run: |
+          mkdir -p dist
+
+          # Copy over a root index if one exists
+          if [ -f index.html ]; then
+            cp index.html dist/index.html
+          else
+            echo "<html><body>Nothing here.</body></html>" > dist/index.html
+          fi
+
+          # Read each key/value from links.yaml and generate a redirect folder
+          while IFS= read -r key; do
+            url=$(yq e ".[\"$key\"]" links.yaml)
+            mkdir -p "dist/$key"
+            cat > "dist/$key/index.html" <<EOF
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Redirecting…</title>
+              <meta http-equiv="refresh" content="0; url=$url">
+              <link rel="canonical" href="$url">
+            </head>
+            <body>
+              <p>Redirecting to <a href="$url">$url</a>…</p>
+              <script>window.location.replace("$url");</script>
+            </body>
+          </html>
+          EOF
+            echo "✓ /$key → $url"
+          done < <(yq e 'keys | .[]' links.yaml)
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

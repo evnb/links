@@ -1,0 +1,6 @@
+# Add your shortlinks here
+# Format: key: destination URL
+# Result: yourdomain.com/key → destination URL
+
+sunlight: https://evnb.github.io/sunlight-exposure-skeleton/
+github: https://github.com/evnb
