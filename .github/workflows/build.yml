@@ -6,6 +6,10 @@ on:
     paths:
       - links.yaml
       - .github/workflows/build.yml
+      - generate.py
+
+  # schedule:
+    # - cron: '0 0 * * 0'  # Rebuild weekly to refresh OG metadata
 
   workflow_dispatch:
 
@@ -21,44 +25,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: pip install pyyaml requests beautifulsoup4 lxml
 
       - name: Generate redirect pages
-        run: |
-          mkdir -p dist
-
-          # Copy over a root index if one exists
-          if [ -f index.html ]; then
-            cp index.html dist/index.html
-          else
-            echo "<html><body>Nothing here.</body></html>" > dist/index.html
-          fi
-
-          # Read each key/value from links.yaml and generate a redirect folder
-          while IFS= read -r key; do
-            url=$(yq e ".[\"$key\"]" links.yaml)
-            mkdir -p "dist/$key"
-            cat > "dist/$key/index.html" <<EOF
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>Redirecting…</title>
-              <meta http-equiv="refresh" content="0; url=$url">
-              <link rel="canonical" href="$url">
-            </head>
-            <body>
-              <p>Redirecting to <a href="$url">$url</a>…</p>
-              <script>window.location.replace("$url");</script>
-            </body>
-          </html>
-          EOF
-            echo "✓ /$key → $url"
-          done < <(yq e 'keys | .[]' links.yaml)
+        run: python generate.py
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
