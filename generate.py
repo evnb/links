@@ -72,7 +72,13 @@ def make_redirect_page(url: str, og: dict) -> str:
     <title>{title}</title>
     <meta http-equiv="refresh" content="0; url={escape(url)}">
     <link rel="canonical" href="{escape(url)}">
-{og_tags}  </head>
+{og_tags}  <style>
+    @media (prefers-color-scheme: dark) {{
+      body {{ background: #121212; color: #e0e0e0; }}
+      a {{ color: #90caf9; }}
+    }}
+  </style>
+  </head>
   <body>
     <p>Redirecting to <a href="{escape(url)}">{escape(url)}</a>…</p>
     <script>window.location.replace("{escape(url)}");</script>
